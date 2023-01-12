@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        max-width: 700px;
+        width: 90%;
+        margin: 0 auto;
+      }
+      select {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        box-sizing: border-box;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+      }
+      input {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        box-sizing: border-box;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        cursor: pointer;
+
+        background-color: blue;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+      }
+
+
+    </style>
+  </head>
+  <body>
+    <h1>Retirer vos fonds en payant le moins de frais possible</h1>
+    <form >
+      <label for="menu1">Réseau</label>
+      <select id="reseau" name="reseau">
+        <option value="moov">Moov</option>
+        <option value="mtn">Mtn</option>
+      </select>
+      <br>
+      <label for="montant">Montant</label>
+      <input type="number" name="montant" id="montant" min="0" value="0" />
+
+      <button type="button" id="calculer" > Calculer </button>
+      
+      <br>
+      <br>
+      <hr>
+
+      <label for="menu3">Résultats</label>
+      <input type="text" id="results" readonly/>
+
+      
+      <br>
+      <label for="menu3">Économie</label>
+      <input type="text" id="" readonly/>
+
+    </form>
+  </body>
+
+  <script src="https://code.jquery.com/jquery-3.6.3.min.js" integrity="sha256-pvPw+upLPUjgMXY0G+8O0xUf+/Im1MZjXxxgOcBQBXU=" crossorigin="anonymous"></script>
+
+  <script>
+
+        var calculer = $('#calculer');
+
+        calculer.click(function() {
+            // Réseau champs
+            var reseauField = $('[name=reseau]');
+
+            var reseauValue = reseauField.val();
+
+            // Montant champs
+            var montantField = $('[name=montant]');
+
+            var montantValue = montantField.val();
+
+            // tableau des valeurs maximal des intervalles
+            if(reseauValue == 'mtn'){
+                high_tab_value = [0, 500, 5000, 10000, 20000, 50000, 75000, 100000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000]
+
+                a = calculMtn(parseInt(montantValue, 10), high_tab_value)
+
+                console.log(decomposeNumber(montantValue, high_tab_value))
+                // display data results
+                display_data = ''
+                fees = 0
+
+                for (let index = 0; index < a.length; index++) {
+                    const element = a[index];
+                    if(element.count == 1){
+                        display_data += element.value+' ';
+                    }
+                    else{
+                        display_data += (element.count==1)? element.value+' ' : element.value*element.count+' ';
+                    }
+
+                    (a.length-1 == index)? display_data +='' : display_data +='+ ';
+
+                    fees += calculerFraisMtn(element.value * element.count);
+                    
+                    //display_data += (element.count==1)? element.value+' ' : element.value+'*'+element.count;
+                }
+                
+                // Afficher la composition de retrait
+                $("#results").val(display_data)
+                
+                // Afficher l'économie réalisée
+                // montantValue amount
+                
+                console.log( calculerFraisMtn(montantValue) - fees )
+                
+            }
+            else if (reseauValue == 'moov') {
+                high_tab_value = [0, 500, 5000, 10000, 20000, 50000, 75000, 100000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000]
+
+                a = calculMoov(parseInt(montantValue, 10), high_tab_value)
+
+                console.log(a)
+                
+            } else {
+                alert("Choix du réseau non validé")
+            }
+            
+        });
+
+        // Mtn calcul
+        function calculMtn(a, tab)
+        {
+            b = calculerFraisMtn(a)
+            c = decomposeNumber(a, tab);
+
+            j = 0;
+
+            for (let i = 0; i < c.length; i++) {
+                const item = c[i];
+                j += calculerFraisMtn( item.value )*item.count
+            }
+
+            return (b<=j)? [{value:a, count:1}] : c; 
+        }
+
+        // Moov calcul
+        function calculMoov(a, tab)
+        {
+            b = calculerFraisMoov(a)
+            c = decomposeNumber(a, tab);
+
+            j = 0;
+
+            for (let i = 0; i < c.length; i++) {
+                const item = c[i];
+                j += calculerFraisMoov( item.value )*item.count
+            }
+
+            return (b<=j)? [{value:a, count:1}] : c; 
+        }
+
+        function decomposeNumber(number, values) {
+            var reseauField = $('[name=reseau]');
+
+            var reseauValue = reseauField.val();
+
+
+            // Créer un tableau pour stocker les résultats de la décomposition
+            let decomposition = [];
+
+            // Trier le tableau de valeurs par ordre décroissant
+            values.sort((a, b) => b - a);
+
+            // Pour chaque valeur dans le tableau de valeurs
+            i = 0;
+            for (const value of values) {
+                if(value == 0){
+                    if(number != 0){
+                        decomposition.push({ 'value':number, 'count':1 });
+                    }
+
+                    return decomposition;   
+                }
+                // Calculer le nombre de fois que la valeur peut être incluse dans le nombre
+                let count = Math.floor(number / value);
+
+                // Si le compte est supérieur à 0
+                if (count > 0) {
+
+                    if( reseauValue == 'mtn' ){
+                        if( calculerFraisMtn(value)*count < calculerFraisMtn(value*count) ){
+                            decomposition.push({ value, count });
+                        }
+                        else{
+                            // Ajouter le compte de cette valeur au tableau de décomposition
+                            decomposition.push({ 'value':value*count, 'count':1 });
+                        }
+
+                        // Soustraire la valeur du nombre
+                        number -= count * value;
+                    }
+                    else if(reseauValue == 'moov') {
+                        if( calculerFraisMoov(value)*count < calculerFraisMoov(value*count) ){
+                            decomposition.push({ value, count });
+                        }
+                        else{
+                            // Ajouter le compte de cette valeur au tableau de décomposition
+                            decomposition.push({ 'value':value*count, 'count':1 });
+                        }
+
+                        // Soustraire la valeur du nombre
+                        number -= count * value;
+                        
+                    }
+
+                }
+
+                ++i;
+            }
+
+            // Retourner le tableau de décomposition
+            return decomposition;
+        }
+
+        
+        function calculerFraisMoov(valeur) {
+            if (valeur <= 500) {
+                return 45;
+            } else if (valeur <= 5000) {
+                return 95;
+            } else if (valeur <= 10000) {
+                return 170;
+            } else if (valeur <= 20000) {
+                return 320;
+            } else if (valeur <= 50000) {
+                return 626;
+            } else if (valeur <= 75000) {
+                return 1000;
+            } else if (valeur <= 100000) {
+                return 1000;
+            } else if (valeur <= 200000) {
+                return 2000;
+            } else if (valeur <= 300000) {
+                return 3000;
+            } else if (valeur <= 400000) {
+                return 3500;
+            } else if (valeur <= 500000) {
+                return 3500;
+            } else if (valeur <= 750000) {
+                return 5000;
+            } else if (valeur <= 1000000) {
+                return 5000;
+            } else if (valeur <= 1500000) {
+                return 5000;
+            } else if (valeur <= 2000000) {
+                return 5000;
+            }
+
+        }
+
+        function calculerFraisMtn(valeur) {
+            if (valeur <= 500) {
+                return 50;
+            } else if (valeur <= 5000) {
+                return 100;
+            } else if (valeur <= 10000) {
+                return 200;
+            } else if (valeur <= 20000) {
+                return 350;
+            } else if (valeur <= 50000) {
+                return 700;
+            } else if (valeur <= 75000) {
+                return 1000;
+            } else if (valeur <= 100000) {
+                return 1000;
+            } else if (valeur <= 200000) {
+                return 2000;
+            } else if (valeur <= 300000) {
+                return 3000;
+            } else if (valeur <= 400000) {
+                return 3500;
+            } else if (valeur <= 500000) {
+                return 3500;
+            } else if (valeur <= 750000) {
+                return 5000;
+            } else if (valeur <= 1000000) {
+                return 5000;
+            } else if (valeur <= 1500000) {
+                return 5000;
+            } else if (valeur <= 2000000) {
+                return 5000;
+            }
+
+        }
+
+        
+  </script>
+
+
+</html>
